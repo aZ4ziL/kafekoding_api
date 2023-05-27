@@ -9,7 +9,7 @@ import (
 
 func init() {
 	db := DB()
-	db.AutoMigrate(&User{}, &UserBio{})
+	db.AutoMigrate(&User{}, &UserBio{}, &Course{})
 }
 
 func DB() *gorm.DB {
