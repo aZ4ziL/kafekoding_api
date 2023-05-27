@@ -1,10 +1,12 @@
 package kafekoding_api
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/aZ4ziL/kafekoding_api/models"
 	"github.com/go-playground/validator/v10"
@@ -157,10 +159,32 @@ func getTokenHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// update last login time for user.
+	user.LastLogin = sql.NullTime{
+		Time:  time.Now(),
+		Valid: true,
+	}
+	models.DB().Save(&user)
+
 	// success response
 	responseJSON(w, http.StatusOK, map[string]interface{}{
 		"status":  "success",
 		"message": "Harap jangan bagikan kode akses token ini kepada siapapun.",
 		"token":   token,
 	})
+}
+
+// authHandler is function for handling and checking authentication user.
+func authHandler(w http.ResponseWriter, r *http.Request) {
+	userCtx := r.Context().Value(&userAuth{}).(claims)
+	user, err := models.GetUserByID(userCtx.credential.ID)
+	if err != nil {
+		responseJSON(w, http.StatusUnauthorized, map[string]interface{}{
+			"status":  "error",
+			"message": "Mohon maaf sepertinya akses token anda tidak di kenali.",
+		})
+		return
+	}
+
+	responseJSON(w, http.StatusOK, user)
 }

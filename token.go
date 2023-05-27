@@ -46,7 +46,7 @@ func verifyToken(token string) (claims, error) {
 	}
 
 	if !jwtToken.Valid {
-		return claims, errors.New("token anda sudah tidak valid atau kadaluarsa.")
+		return claims, errors.New("token anda sudah tidak valid atau kadaluarsa")
 	}
 
 	return claims, nil

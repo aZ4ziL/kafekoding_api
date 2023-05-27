@@ -1,8 +1,10 @@
 package kafekoding_api
 
 import (
+	"context"
 	"log"
 	"net/http"
+	"strings"
 )
 
 // loggingMiddleware is function to print a output for every request.
@@ -26,5 +28,35 @@ func methodMiddleware(next http.Handler, method string) http.Handler {
 			})
 			return
 		}
+	})
+}
+
+// authenticationMiddleware is middleware for check authentication for user, by bearer token.
+func authenticationMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		authHeader := r.Header.Get("Authorization")
+		if !strings.Contains(authHeader, "Bearer") {
+			responseJSON(w, http.StatusUnauthorized, map[string]interface{}{
+				"status":  "error",
+				"message": "Autentikasi dibutuhkan",
+			})
+			return
+		}
+
+		token := strings.Replace(authHeader, "Bearer ", "", -1)
+
+		claims, err := verifyToken(token)
+		if err != nil {
+			responseJSON(w, http.StatusUnauthorized, map[string]interface{}{
+				"status":  "error",
+				"message": err.Error(),
+			})
+			return
+		}
+
+		ctx := context.WithValue(context.Background(), &userAuth{}, claims)
+		r = r.WithContext(ctx)
+
+		next.ServeHTTP(w, r)
 	})
 }
