@@ -20,7 +20,17 @@ func courseHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
 		// if query id
 		id := r.URL.Query().Get("id")
-		if id != "" {
+		userId := r.URL.Query().Get("userId")
+		_type := r.URL.Query().Get("type")
+
+		if id != "" && userId != "" && _type != "" {
+			userIdInt, _ := strconv.Atoi(userId)
+			courseIdInt, _ := strconv.Atoi(id)
+			courseHandlerJoinMember(w, r, courseIdInt, userIdInt, _type)
+			return
+		}
+
+		if id != "" && userId == "" && _type == "" {
 			courseHandlerDetailGET(w, r)
 			return
 		}
@@ -439,4 +449,37 @@ func courseHandlerDELETE(w http.ResponseWriter, r *http.Request) {
 
 	models.DB().Delete(&course)
 	responseJSON(w, http.StatusNoContent, nil)
+}
+
+// courseHandlerJoinMember is handler to handling user to join to course.
+func courseHandlerJoinMember(w http.ResponseWriter, r *http.Request, courseId, userId int, _type string) {
+	user, err := models.GetUserByID(userId)
+	if err != nil {
+		responseJSON(w, http.StatusNotFound, nil)
+		return
+	}
+
+	course, err := models.GetCourseByID(courseId, true)
+	if err != nil {
+		responseJSON(w, http.StatusNotFound, nil)
+		return
+	}
+
+	userContext := r.Context().Value(&userAuth{}).(claims)
+	thisUser, _ := models.GetUserByID(userContext.credential.ID)
+
+	if user.ID != thisUser.ID {
+		responseJSON(w, http.StatusBadRequest, nil)
+		return
+	}
+
+	if _type == "join" {
+		models.DB().Model(&course).Preload("Mentors").Association("Members").Append(&user)
+		responseJSON(w, http.StatusOK, course)
+		return
+	} else if _type == "quit" {
+		models.DB().Model(&course).Preload("Mentors").Association("Members").Delete(&user)
+		responseJSON(w, http.StatusOK, course)
+		return
+	}
 }
