@@ -39,6 +39,11 @@ func courseHandler(w http.ResponseWriter, r *http.Request) {
 		courseHandlerPUT(w, r)
 		return
 	}
+
+	if r.Method == http.MethodDelete {
+		courseHandlerDELETE(w, r)
+		return
+	}
 }
 
 // courseHandlerDetailGET is handler to handling the course data with id query.
@@ -406,4 +411,32 @@ func courseHandlerPUT(w http.ResponseWriter, r *http.Request) {
 
 	models.DB().Save(&course)
 	responseJSON(w, http.StatusOK, course)
+}
+
+// courseHandlerDELETE is handler to delete course data.
+func courseHandlerDELETE(w http.ResponseWriter, r *http.Request) {
+	userContext := r.Context().Value(&userAuth{}).(claims)
+	user, _ := models.GetUserByID(userContext.credential.ID)
+	if !user.IsAdmin {
+		responseJSON(w, http.StatusBadRequest, map[string]interface{}{
+			"status":  "error",
+			"message": "Anda tidak di ijinkan untuk mengakses metode ini.",
+		})
+		return
+	}
+
+	id := r.URL.Query().Get("id")
+	idInt, _ := strconv.Atoi(id)
+
+	course, err := models.GetCourseByIDNotParam(idInt)
+	if err != nil {
+		responseJSON(w, http.StatusNotFound, map[string]interface{}{
+			"status":  "error",
+			"message": fmt.Sprintf("Kursus dengan id: %d tidak dapat ditemukan.", idInt),
+		})
+		return
+	}
+
+	models.DB().Delete(&course)
+	responseJSON(w, http.StatusNoContent, nil)
 }
