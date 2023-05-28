@@ -7,29 +7,31 @@ import (
 
 // User is type for implement user model.
 type User struct {
-	ID         int          `gorm:"primaryKey" json:"id,omitempty"`
-	FirstName  string       `gorm:"size:50" json:"first_name,omitempty"`
-	LastName   string       `gorm:"size:50" json:"last_name,omitempty"`
-	Username   string       `gorm:"30;unique" json:"username,omitempty"`
-	Email      string       `gorm:"size:50;unique" json:"email,omitempty"`
+	ID         int          `gorm:"primaryKey" json:"id"`
+	FirstName  string       `gorm:"size:50" json:"first_name"`
+	LastName   string       `gorm:"size:50" json:"last_name"`
+	Username   string       `gorm:"30;unique" json:"username"`
+	Email      string       `gorm:"size:50;unique" json:"email"`
 	Password   string       `gorm:"size:128" json:"-"`
-	LastLogin  sql.NullTime `gorm:"null" json:"last_login,omitempty"`
-	DateJoined time.Time    `gorm:"autoCreateTime" json:"date_joined,omitempty"`
-	UserBio    *UserBio     `gorm:"foreignKey:UserID" json:"user_bio,omitempty"`
+	IsActive   bool         `gorm:"default:true" json:"is_active"`
+	IsAdmin    bool         `gorm:"default:false" json:"is_admin"`
+	LastLogin  sql.NullTime `gorm:"null" json:"last_login"`
+	DateJoined time.Time    `gorm:"autoCreateTime" json:"date_joined"`
+	UserBio    *UserBio     `gorm:"foreignKey:UserID" json:"user_bio"`
 }
 
 // UserBio is type for implament bio.
 type UserBio struct {
-	ID           int          `gorm:"primaryKey" json:"id,omitempty"`
-	UserID       int          `json:"user_id,omitempty"`
-	Avatar       string       `gorm:"size:255" json:"avatar,omitempty"`
-	IsAdmin      bool         `gorm:"default:false" json:"is_admin,omitempty"`
-	Gender       string       `gorm:"size:9" json:"gender,omitempty"`
-	StudentID    uint         `json:"student_id,omitempty"`
-	SchoolOrigin string       `gorm:"size:50" json:"school_origin,omitempty"`
-	Birth        sql.NullTime `json:"birth,omitempty"`
-	UpdatedAt    time.Time    `json:"updated_at,omitempty"`
-	CreatedAt    time.Time    `json:"created_at,omitempty"`
+	ID           int          `gorm:"primaryKey" json:"id"`
+	UserID       int          `json:"user_id"`
+	Avatar       string       `gorm:"size:255" json:"avatar"`
+	IsAdmin      bool         `gorm:"default:false" json:"is_admin"`
+	Gender       string       `gorm:"size:9" json:"gender"`
+	StudentID    uint         `json:"student_id"`
+	SchoolOrigin string       `gorm:"size:50" json:"school_origin"`
+	Birth        sql.NullTime `json:"birth"`
+	UpdatedAt    time.Time    `json:"updated_at"`
+	CreatedAt    time.Time    `json:"created_at"`
 }
 
 // CreateNewUser is function to create a new user.
