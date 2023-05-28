@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/aZ4ziL/kafekoding_api/models"
@@ -15,18 +16,32 @@ import (
 )
 
 // courseHandlerGET is handler for handling the course data with request type is GET.
-func courseHandlerGET(w http.ResponseWriter, r *http.Request) {
-	// if query id
-	id := r.URL.Query().Get("id")
-	if id != "" {
-		courseHandlerDetailGET(w, r)
+func courseHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodGet {
+		// if query id
+		id := r.URL.Query().Get("id")
+		if id != "" {
+			courseHandlerDetailGET(w, r)
+			return
+		}
+
+		courses := models.GetAllCourse(true)
+		responseJSON(w, http.StatusOK, courses)
 		return
 	}
 
-	courses := models.GetAllCourse(true)
-	responseJSON(w, http.StatusOK, courses)
+	if r.Method == http.MethodPost {
+		courseHandlerPOST(w, r)
+		return
+	}
+
+	if r.Method == http.MethodPut {
+		courseHandlerPUT(w, r)
+		return
+	}
 }
 
+// courseHandlerDetailGET is handler to handling the course data with id query.
 func courseHandlerDetailGET(w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Query().Get("id")
 	idInt, _ := strconv.Atoi(id)
@@ -78,6 +93,39 @@ func courseHandlerPOST(w http.ResponseWriter, r *http.Request) {
 	isActive := r.FormValue("is_active")
 	openedAt := r.FormValue("opened_at")
 	closedAt := r.FormValue("closed_at")
+	mentors := r.FormValue("mentors")
+	members := r.FormValue("members")
+
+	var mentorsUser []*models.User
+	var membersUser []*models.User
+
+	mentorsList := strings.Split(mentors, ",")
+	membersList := strings.Split(members, ",")
+
+	for _, mentor := range mentorsList {
+		userId, _ := strconv.Atoi(mentor)
+		user, err := models.GetUserByID(userId)
+		if err != nil {
+			responseJSON(w, http.StatusBadRequest, map[string]interface{}{
+				"status":  "error",
+				"message": fmt.Sprintf("Pengguna dengan id: %d tidak dapat ditemukan.", userId),
+			})
+			return
+		}
+		mentorsUser = append(mentorsUser, &user)
+	}
+	for _, member := range membersList {
+		userId, _ := strconv.Atoi(member)
+		user, err := models.GetUserByID(userId)
+		if err != nil {
+			responseJSON(w, http.StatusBadRequest, map[string]interface{}{
+				"status":  "error",
+				"message": fmt.Sprintf("Pengguna dengan id: %d tidak dapat ditemukan.", userId),
+			})
+			return
+		}
+		membersUser = append(membersUser, &user)
+	}
 
 	isActiveBool, _ := strconv.ParseBool(isActive)
 
@@ -155,6 +203,8 @@ func courseHandlerPOST(w http.ResponseWriter, r *http.Request) {
 		IsActive:    payloads.IsActive,
 		OpenedAt:    parsedOpenedAtWithLocation,
 		ClosedAt:    parsedClosedAtWithLocation,
+		Mentors:     mentorsUser,
+		Members:     membersUser,
 	}
 
 	// check extension
@@ -213,4 +263,147 @@ func courseHandlerPOST(w http.ResponseWriter, r *http.Request) {
 	models.DB().Save(&course)
 
 	responseJSON(w, http.StatusCreated, course)
+}
+
+// courseHandlerPUT is handle to edit course data.
+func courseHandlerPUT(w http.ResponseWriter, r *http.Request) {
+	// FIXME: Add add and delete user to mentors and members.
+
+	userContext := r.Context().Value(&userAuth{}).(claims)
+	user, _ := models.GetUserByID(userContext.credential.ID)
+	if !user.IsAdmin {
+		responseJSON(w, http.StatusBadRequest, map[string]interface{}{
+			"status":  "error",
+			"message": "Anda tidak diijinkan untuk mengakses metode ini.",
+		})
+		return
+	}
+
+	id := r.URL.Query().Get("id")
+	idInt, _ := strconv.Atoi(id)
+
+	course, err := models.GetCourseByIDNotParam(idInt)
+	if err != nil {
+		responseJSON(w, http.StatusNotFound, map[string]interface{}{
+			"status":  "error",
+			"message": fmt.Sprintf("Kursus dengan id: %d tidak dapat ditemukan.", idInt),
+		})
+		return
+	}
+
+	title := r.FormValue("title")
+	description := r.FormValue("description")
+	content := r.FormValue("content")
+	isActive := r.FormValue("is_active")
+	openedAt := r.FormValue("opened_at")
+	closedAt := r.FormValue("closed_at")
+
+	if title != "" {
+		course.Title = title
+	}
+	if description != "" {
+		course.Description = description
+	}
+	if content != "" {
+		course.Content = content
+	}
+	if openedAt != "" {
+		location, err := time.LoadLocation("Asia/Jakarta")
+		if err != nil {
+			responseJSON(w, http.StatusInternalServerError, map[string]interface{}{
+				"status":  "error",
+				"message": err.Error(),
+			})
+			return
+		}
+		parseTime, err := time.ParseInLocation("15:04", openedAt, location)
+		if err != nil {
+			responseJSON(w, http.StatusInternalServerError, map[string]interface{}{
+				"status":  "error",
+				"message": err.Error(),
+			})
+			return
+		}
+
+		course.OpenedAt = parseTime
+	}
+	if closedAt != "" {
+		location, err := time.LoadLocation("Asia/Jakarta")
+		if err != nil {
+			responseJSON(w, http.StatusInternalServerError, map[string]interface{}{
+				"status":  "error",
+				"message": err.Error(),
+			})
+			return
+		}
+		parseTime, err := time.ParseInLocation("15:04", closedAt, location)
+		if err != nil {
+			responseJSON(w, http.StatusInternalServerError, map[string]interface{}{
+				"status":  "error",
+				"message": err.Error(),
+			})
+			return
+		}
+
+		course.ClosedAt = parseTime
+	}
+	if isActive != "" {
+		isActiveBool, _ := strconv.ParseBool(isActive)
+		course.IsActive = isActiveBool
+	}
+
+	file, header, err := r.FormFile("logo")
+	if err != nil {
+		models.DB().Save(&course)
+		responseJSON(w, http.StatusOK, course)
+		return
+	}
+
+	if !checkExtension(header.Filename) {
+		responseJSON(w, http.StatusBadRequest, map[string]interface{}{
+			"status":  "error",
+			"message": "Harap upload gambar dengan extensi JPG|PNG saja.",
+		})
+		return
+	}
+
+	filename := fmt.Sprintf("/media/courses/%d/%s", course.ID, header.Filename)
+
+	dir, err := os.Getwd()
+	if err != nil {
+		responseJSON(w, http.StatusInternalServerError, map[string]interface{}{
+			"status":  "error",
+			"message": err.Error(),
+		})
+		return
+	}
+
+	// delete old file
+	_ = os.RemoveAll("." + course.Logo)
+
+	fileLocation := filepath.Join(dir, filename)
+	targetFile, err := os.OpenFile(fileLocation, os.O_WRONLY|os.O_CREATE, 0666)
+	if err != nil {
+		responseJSON(w, http.StatusInternalServerError, map[string]interface{}{
+			"status":  "error",
+			"message": err.Error(),
+		})
+		return
+	}
+
+	_, err = io.Copy(targetFile, file)
+	if err != nil {
+		responseJSON(w, http.StatusInternalServerError, map[string]interface{}{
+			"status":  "error",
+			"message": err.Error(),
+		})
+		return
+	}
+
+	isActiveBool, _ := strconv.ParseBool(isActive)
+	course.IsActive = isActiveBool
+	course.Logo = filename
+
+	models.DB().Save(&course)
+	responseJSON(w, http.StatusOK, course)
 }

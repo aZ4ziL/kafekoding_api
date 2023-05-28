@@ -16,11 +16,7 @@ func Router() *http.ServeMux {
 		authenticationMiddleware(methodMiddleware(http.HandlerFunc(authHandler), "GET"))))
 
 	// course group
-	mux.Handle("/courses", loggingMiddleware(
-		methodMiddleware(http.HandlerFunc(courseHandlerGET), "GET")))
-	mux.Handle("/courses/add", loggingMiddleware(
-		authenticationMiddleware(
-			methodMiddleware(http.HandlerFunc(courseHandlerPOST), "POST"))))
+	mux.Handle("/courses", loggingMiddleware(authenticationMiddleware(http.HandlerFunc(courseHandler))))
 
 	return mux
 }

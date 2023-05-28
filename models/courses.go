@@ -36,6 +36,14 @@ func GetCourseByID(id int, isActive bool) (Course, error) {
 	return course, err
 }
 
+// GetCourseByIDNotParam
+func GetCourseByIDNotParam(id int) (Course, error) {
+	var course Course
+	err := DB().Model(&Course{}).Where("id = ?", id).
+		Preload("Mentors").Preload("Members").First(&course).Error
+	return course, err
+}
+
 // GetAllCourse is function to get all course.
 func GetAllCourse(isActive bool) []Course {
 	var courses []Course
