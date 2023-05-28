@@ -10,6 +10,15 @@ import (
 // loggingMiddleware is function to print a output for every request.
 func loggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Add CORS
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type,Authorization,Accept")
+		w.Header().Set("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS")
+
+		if r.Method == http.MethodOptions {
+			w.Write([]byte("allowed"))
+			return
+		}
 		log.Printf("URL %s - %s\n", r.URL.String(), r.Method)
 		next.ServeHTTP(w, r)
 	})
